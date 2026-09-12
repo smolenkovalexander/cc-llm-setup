@@ -1,0 +1,35 @@
+model_list:
+  # DeepSeek через Anthropic-совместимый эндпоинт (основная дешёвая модель)
+  - model_name: deepseek-v4-pro
+    litellm_params:
+      model: anthropic/deepseek-v4-pro
+      api_base: https://api.deepseek.com/anthropic
+      api_key: YOUR_DEEPSEEK_API_KEY
+
+  # DeepSeek Flash — для фоновых задач и сабагентов
+  - model_name: deepseek-v4-flash
+    litellm_params:
+      model: anthropic/deepseek-v4-flash
+      api_base: https://api.deepseek.com/anthropic
+      api_key: YOUR_DEEPSEEK_API_KEY
+
+  # Claude Sonnet через EPAM DIAL (корпоративный шлюз)
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: azure/anthropic.claude-sonnet-4-6
+      api_base: https://ai-proxy.lab.epam.com
+      api_key: YOUR_DIAL_TOKEN
+      api_version: ""
+
+  # Claude Haiku через EPAM DIAL
+  - model_name: claude-haiku-4-5
+    litellm_params:
+      model: azure/anthropic.claude-haiku-4-5-20251001-v1:0
+      api_base: https://ai-proxy.lab.epam.com
+      api_key: YOUR_DIAL_TOKEN
+      api_version: ""
+
+litellm_settings:
+  drop_params: true
+  callbacks:
+    - strip_cache.strip_cache_handler

@@ -1,0 +1,14 @@
+@echo off
+REM Запуск локального прокси LiteLLM (порт 4000)
+REM Скопируй этот файл в start-proxy.cmd и укажи свои пути
+
+REM Путь к папке проекта — измени на свой
+set "PROXY_DIR=C:\Users\YOUR_USERNAME\cc-llm-setup"
+
+cd /d "%PROXY_DIR%"
+set "PYTHONIOENCODING=utf-8"
+
+REM --host 127.0.0.1: прокси доступен только локально
+start "litellm-proxy" /min "%PROXY_DIR%\venv\Scripts\litellm.exe" --config "%PROXY_DIR%\config-azure.yaml" --port 4000 --host 127.0.0.1
+
+echo LiteLLM proxy started on http://127.0.0.1:4000

@@ -1,0 +1,10 @@
+# Файлы с реальными ключами — никогда не коммитить
+config-azure.yaml
+config.yaml
+start-proxy.cmd
+.env
+*.log
+cc-proxy.lock
+__pycache__/
+venv/
+*.pyc
