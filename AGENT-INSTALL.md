@@ -9,7 +9,7 @@
 - ОС: Windows 10/11
 - Python 3.11+ установлен: `python --version`
 - Git установлен: `git --version`
-- SSH-ключ настроен для GitHub: `ssh -T git@github.com`
+- Claude Code установлен: `claude --version`
 - У пользователя есть: DeepSeek API key + EPAM DIAL token
 
 ---
@@ -30,7 +30,7 @@ $proxyDir = "$home\cc-llm-setup"
 
 ```powershell
 cd $home
-git clone git@github.com:smolenkovalexander/cc-llm-setup.git
+git clone https://github.com/smolenkovalexander/cc-llm-setup.git
 cd cc-llm-setup
 ```
 
@@ -94,18 +94,31 @@ cp .env.example "$home\.env"
 
 ---
 
-## Шаг 7 — Запусти прокси
+## Шаг 7 — Установи лаунчеры
+
+Скопируй оба лаунчера в папку из PATH (создай её, если нет):
+
+```powershell
+$bin = "$home\.local\bin"
+if (-not (Test-Path $bin)) { New-Item -ItemType Directory $bin | Out-Null }
+cp cc-proxy.cmd $bin\
+cp cc-ds.cmd $bin\
+```
+
+Проверь, что `$bin` есть в PATH (`echo $env:PATH`); если нет — добавь через «Переменные среды». Лаунчеры сами найдут `start-proxy.cmd` рядом с собой или в `$home\cc-llm-setup`.
+
+## Шаг 8 — Запусти прокси вручную (альтернатива cc-proxy)
 
 ```powershell
 .\start-proxy.cmd
 ```
 
-Проверь, что прокси поднялся:
+Проверь, что прокси поднялся. **Важно: `/health/liveliness`, а не `/health`** — `/health` пингует все модели конфига и зависает, если один апстрим недоступен:
 ```powershell
-curl http://127.0.0.1:4000/health
+curl http://127.0.0.1:4000/health/liveliness
 ```
 
-Ожидаемый ответ: JSON со статусом healthy или список моделей.
+Ожидаемый ответ: `I'm alive!`
 
 Проверь список моделей:
 ```powershell
@@ -116,7 +129,9 @@ curl http://127.0.0.1:4000/v1/models
 
 ---
 
-## Шаг 8 — Добавь прокси в автозагрузку Windows
+## Шаг 9 — Автозагрузка (опционально)
+
+При работе через `cc-proxy` автозагрузка не нужна: прокси поднимается по требованию и гасится при выходе. Автозагрузка полезна только если хочется держать прокси постоянно запущенным.
 
 Создай ярлык на `start-proxy.cmd` и помести в:
 ```
@@ -135,14 +150,14 @@ $shortcut.Save()
 
 ---
 
-## Шаг 9 — Проверь работу Claude Code
+## Шаг 10 — Проверь работу Claude Code
 
 ```powershell
 claude --version
 claude -p "ответь одним словом: работает?"
 ```
 
-Если ответ получен — установка завершена.
+Запусти интерактивно `cc-proxy` (прокси + обе модели) или `cc-ds` (прямой DeepSeek): должен появиться баннер Claude Code. Если ответ получен — установка завершена.
 
 ---
 
@@ -156,7 +171,7 @@ claude -p "ответь одним словом: работает?"
 ### Claude Code не видит прокси
 - Проверь `~\.env`: `ANTHROPIC_BASE_URL=http://127.0.0.1:4000`
 - Перезапусти терминал после изменения `.env`
-- Проверь `curl http://127.0.0.1:4000/health`
+- Проверь `curl http://127.0.0.1:4000/health/liveliness` — должен быть ответ `I'm alive!`
 
 ### Ошибки кодировки при запуске прокси
 - В `start-proxy.cmd` должно быть: `set "PYTHONIOENCODING=utf-8"`
@@ -167,7 +182,8 @@ claude -p "ответь одним словом: работает?"
 
 ### DIAL не отвечает
 - DIAL token имеет срок жизни — получи новый у администратора EPAM
-- Проверь VPN-подключение к корпоративной сети (если требуется)
+- Проверь VPN-подключение к корпоративной сети: без VPN имя резолвится в публичный IP, где сервис не отвечает. Быстрая проверка: `curl -s -m 5 -o /dev/null -w "%{http_code}" https://ai-proxy.lab.epam.com` — `401` = всё ок, `000` = включить VPN
+- `cc-proxy` сам печатает WARNING о недоступном DIAL перед запуском Claude Code
 
 ---
 
