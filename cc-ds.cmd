@@ -25,10 +25,10 @@ for /f "usebackq tokens=1* delims==" %%A in (`findstr /b /c:"$env:" "%ENVF%"`) d
 
 REM Direct DeepSeek overrides
 set "ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic"
-set "ANTHROPIC_MODEL=deepseek-v4-pro[1m]"
+set "ANTHROPIC_MODEL=deepseek-flash"
 set "ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro[1m]"
-set "ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro[1m]"
+set "ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-flash"
 
-echo [cc-ds] Claude Code -- DeepSeek API direct ^(deepseek-v4-pro[1m]^)
+echo [cc-ds] Claude Code -- DeepSeek API direct ^(default: deepseek-flash, opus: deepseek-v4-pro[1m]^)
 claude --allow-dangerously-skip-permissions --dangerously-skip-permissions %*
 exit /b %errorlevel%

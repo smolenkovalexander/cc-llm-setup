@@ -11,7 +11,7 @@ Claude Code
     │ Anthropic Messages API
     ▼
 LiteLLM proxy (localhost:4000)
-    ├── deepseek-v4-pro / deepseek-v4-flash → api.deepseek.com
+    ├── deepseek-v4-pro / deepseek-flash → api.deepseek.com
     └── claude-sonnet-4-6 / claude-haiku-4-5 → ai-proxy.lab.epam.com (DIAL)
 ```
 
@@ -69,7 +69,7 @@ cc-ds       # напрямую через DeepSeek, без прокси
 ## Переключение модели
 
 ```
-/model deepseek-v4-pro      ← по умолчанию, повседневная работа
-/model claude-sonnet-4-6    ← сложные задачи, ревью архитектуры
-/model deepseek-v4-flash    ← фоновые агенты
+/model deepseek-flash       ← по умолчанию, повседневная работа
+/model deepseek-v4-pro      ← самые сложные задачи, архитектура, алгоритмика
+/model claude-sonnet-4-6    ← консультации (только при VPN)
 ```

@@ -125,7 +125,7 @@ curl http://127.0.0.1:4000/health/liveliness
 curl http://127.0.0.1:4000/v1/models
 ```
 
-Должны быть: `deepseek-v4-pro`, `deepseek-v4-flash`, `claude-sonnet-4-6`, `claude-haiku-4-5`.
+Должны быть: `deepseek-v4-pro`, `deepseek-flash`, `claude-sonnet-4-6`, `claude-haiku-4-5`.
 
 ---
 
@@ -196,7 +196,7 @@ Claude Code / другой AI-агент
         ▼
 LiteLLM прокси (127.0.0.1:4000)
         │
-        ├─── deepseek-v4-pro / deepseek-v4-flash
+        ├─── deepseek-v4-pro / deepseek-flash
         │         └── api.deepseek.com/anthropic
         │
         └─── claude-sonnet-4-6 / claude-haiku-4-5
@@ -205,7 +205,7 @@ LiteLLM прокси (127.0.0.1:4000)
 
 ### Переключение модели в Claude Code
 ```
-/model deepseek-v4-pro      ← дешёвая повседневная работа
-/model claude-sonnet-4-6    ← сложные задачи, ревью, архитектура
-/model deepseek-v4-flash    ← фоновые задачи
+/model deepseek-flash       ← по умолчанию, повседневная работа
+/model deepseek-v4-pro      ← самые сложные задачи, архитектура, алгоритмика
+/model claude-sonnet-4-6    ← консультации (только при VPN)
 ```
