@@ -1,211 +1,245 @@
-# Инструкция для AI-агента: установка cc-llm-setup
+# Установка cc-llm-setup агентом
 
-Эта инструкция предназначена для AI-агента (Claude Code, Hermes и др.), который устанавливает прокси на новом компьютере. Следуй шагам строго по порядку.
+Runbook для AI-агента (Claude Code или другой CLI-агент), который разворачивает эту
+систему на новом компьютере. Проходи шаги по порядку; после каждого — проверка.
+Если проверка не прошла, не продолжай: смотри «Диагностику» в конце.
 
----
+Пользователю по ходу понадобится ввести два секрета (DeepSeek key и DIAL token) —
+их вводит человек, агент их не придумывает и никуда не пишет, кроме `config-azure.yaml`.
 
-## Предусловия (проверь перед началом)
+## Что получится в итоге
 
-- ОС: Windows 10/11
-- Python 3.11+ установлен: `python --version`
-- Git установлен: `git --version`
-- Claude Code установлен: `claude --version`
-- У пользователя есть: DeepSeek API key + EPAM DIAL token
-
----
-
-## Шаг 1 — Определи пути
-
-```powershell
-$username = $env:USERNAME
-$home = $env:USERPROFILE
-$proxyDir = "$home\cc-llm-setup"
+```
+%USERPROFILE%\cc-llm-setup\      ← папка проекта (клона): venv, конфиги, скрипты
+%USERPROFILE%\.local\bin\        ← cc-ds.cmd, cc-proxy.cmd (из PATH)
+%USERPROFILE%\.env               ← переменные Claude Code (модели, endpoint)
+C:\...\Startup\litellm-proxy.lnk ← НЕ создаётся: прокси живёт только на время сессии
 ```
 
-Запомни `$proxyDir` — он используется во всех последующих шагах.
+Два режима работы:
 
----
+| Лончер | Что делает | Нужен прокси | Нужен VPN |
+|---|---|---|---|
+| `cc-ds` | Claude Code → api.deepseek.com напрямую | нет | нет |
+| `cc-proxy` | Claude Code → локальный LiteLLM:4000 → DeepSeek / EPAM DIAL | да (поднимает сам) | для sonnet/haiku |
 
-## Шаг 2 — Клонируй репозиторий
+## Предусловия
+
+Проверь и покажи пользователю результат каждого пункта:
 
 ```powershell
-cd $home
+python --version      # нужен Python 3.11+
+git --version
+node --version        # нужен для хуков Claude Code
+claude --version      # Claude Code установлен
+```
+
+Если чего-то нет:
+
+```powershell
+winget install Python.Python.3.12   # или с python.org
+winget install Git.Git
+winget install OpenJS.NodeJS.LTS
+npm install -g @anthropic-ai/claude-code
+```
+
+Секреты (запроси у пользователя, если их нет):
+- **DeepSeek API key** — https://platform.deepseek.com → API Keys
+- **EPAM DIAL token** — у администратора EPAM; формат `dial-...`, имеет срок жизни
+
+## Шаг 1. Клонирование
+
+Раскладка по умолчанию — строго `%USERPROFILE%\cc-llm-setup`: на неё рассчитаны
+лончеры и шаблон `start-proxy.cmd.example`.
+
+```powershell
+cd $env:USERPROFILE
 git clone https://github.com/smolenkovalexander/cc-llm-setup.git
 cd cc-llm-setup
 ```
 
----
+Проверка: `Test-Path .\cc-proxy.cmd` → `True`.
 
-## Шаг 3 — Создай виртуальное окружение и установи зависимости
+## Шаг 2. Виртуальное окружение
 
 ```powershell
 python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
+.\venv\Scripts\python.exe -m pip install --upgrade pip
+.\venv\Scripts\pip.exe install -r requirements.txt
+.\venv\Scripts\litellm.exe --version
 ```
 
-Проверь, что litellm установился:
-```powershell
-litellm --version
-```
+Проверка: последняя команда печатает `LiteLLM: Current Version = 1.99.0` (или новее).
+Активировать venv в текущей сессии не обязательно — скрипты вызывают `litellm.exe` по пути.
 
----
-
-## Шаг 4 — Создай конфигурацию прокси
-
-Скопируй шаблон:
-```powershell
-cp config-azure.yaml.example config-azure.yaml
-```
-
-Открой `config-azure.yaml` и замени:
-- `YOUR_DEEPSEEK_API_KEY` → реальный DeepSeek API key (получить на platform.deepseek.com)
-- `YOUR_DIAL_TOKEN` → реальный EPAM DIAL token (формат: `dial-xxxxxxxxxxxx`)
-
-**Важно:** этот файл в `.gitignore` — он не попадёт в git. Никогда не коммить файлы с реальными ключами.
-
----
-
-## Шаг 5 — Создай скрипт запуска
+## Шаг 3. Конфигурация прокси (секреты)
 
 ```powershell
-cp start-proxy.cmd.example start-proxy.cmd
+Copy-Item config-azure.yaml.example config-azure.yaml
 ```
 
-Открой `start-proxy.cmd` и замени `YOUR_USERNAME` на реальное имя пользователя Windows (`$env:USERNAME`).
+Открой `config-azure.yaml` и замени плейсхолдеры:
 
-Путь к litellm.exe должен быть:
-```
-C:\Users\YOUR_USERNAME\cc-llm-setup\venv\Scripts\litellm.exe
-```
+| Плейсхолдер | Значение |
+|---|---|
+| `YOUR_DEEPSEEK_API_KEY` (2 места) | DeepSeek API key |
+| `YOUR_DIAL_TOKEN` (2 места) | EPAM DIAL token |
 
----
+Ввод — только пользователь. Агент: попроси вставить ключи и не повторяй их в чате,
+логах и коммитах.
 
-## Шаг 6 — Создай .env для Claude Code
+Проверка: `git status --short` **не должен** показывать `config-azure.yaml` —
+он в `.gitignore`. Если показывает, остановись и проверь `.gitignore`.
+
+> Ключи DIAL имеют срок жизни. Если `cc-proxy` пишет WARNING про недоступный DIAL
+> при включённом VPN — токен, скорее всего, истёк: запроси новый.
+
+## Шаг 4. Скрипт запуска прокси
 
 ```powershell
-cp .env.example "$home\.env"
+Copy-Item start-proxy.cmd.example start-proxy.cmd
 ```
 
-Открой `$home\.env` и замени:
-- `YOUR_LITELLM_VIRTUAL_KEY_OR_ANY_NONEMPTY_STRING` → любая непустая строка (например, `local-proxy-key`)
+Правка нужна, **только** если папка проекта не `%USERPROFILE%\cc-llm-setup`:
+в `start-proxy.cmd` замени строку `set "PROXY_DIR=%USERPROFILE%\cc-llm-setup"`.
 
-Остальные значения менять не нужно — они уже правильные.
+Не удаляй из него `set "PYTHONIOENCODING=utf-8"` — без него LiteLLM падает на
+русской Windows с `UnicodeEncodeError` в баннере и не стартует вообще.
 
----
+Проверка: `Test-Path .\start-proxy.cmd` → `True`.
 
-## Шаг 7 — Установи лаунчеры
-
-Скопируй оба лаунчера в папку из PATH (создай её, если нет):
+## Шаг 5. Переменные Claude Code
 
 ```powershell
-$bin = "$home\.local\bin"
-if (-not (Test-Path $bin)) { New-Item -ItemType Directory $bin | Out-Null }
-cp cc-proxy.cmd $bin\
-cp cc-ds.cmd $bin\
+Copy-Item .env.example "$env:USERPROFILE\.env" -Force
 ```
 
-Проверь, что `$bin` есть в PATH (`echo $env:PATH`); если нет — добавь через «Переменные среды». Лаунчеры сами найдут `start-proxy.cmd` рядом с собой или в `$home\cc-llm-setup`.
+Значения менять не нужно. Токен `ANTHROPIC_AUTH_TOKEN` — любая непустая строка
+(например, `local-proxy-key`): это заглушка для прокси, реальный ключ не нужен.
 
-## Шаг 8 — Запусти прокси вручную (альтернатива cc-proxy)
+**Правило имён моделей** (иначе получите HTTP 400): в `.env` имена должны точно
+совпадать с `model_name` в `config-azure.yaml`. Суффикс `[1m]` (1M-контекст) здесь
+указывать нельзя — его понимает только прямой DeepSeek API; в режиме `cc-ds` лончер
+подставляет его сам.
+
+## Шаг 6. Лончеры в PATH
+
+```powershell
+$bin = "$env:USERPROFILE\.local\bin"
+New-Item -ItemType Directory -Force $bin | Out-Null
+Copy-Item cc-ds.cmd, cc-proxy.cmd $bin\
+```
+
+Добавь `$bin` в пользовательский PATH, если его там нет:
+
+```powershell
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($userPath -notlike "*$bin*") {
+  [Environment]::SetEnvironmentVariable("Path", "$userPath;$bin", "User")
+  Write-Host "PATH обновлён — перезапусти терминал"
+}
+```
+
+Проверка (в **новом** терминале): `Get-Command cc-proxy` находит `.local\bin\cc-proxy.cmd`.
+
+## Шаг 7. Первый запуск и приёмка
 
 ```powershell
 .\start-proxy.cmd
+Start-Sleep -Seconds 15
+curl.exe -s http://127.0.0.1:4000/health/liveliness
 ```
 
-Проверь, что прокси поднялся. **Важно: `/health/liveliness`, а не `/health`** — `/health` пингует все модели конфига и зависает, если один апстрим недоступен:
+Ожидается `"I'm alive!"`.
+**Не используй `/health`** — он пингует все модели конфига и зависает, если один
+апстрим недоступен (типовой случай: DIAL без VPN).
+
+Список моделей:
+
 ```powershell
-curl http://127.0.0.1:4000/health/liveliness
+curl.exe -s http://127.0.0.1:4000/v1/models
 ```
 
-Ожидаемый ответ: `I'm alive!`
+Ожидается четыре: `deepseek-v4-pro`, `deepseek-flash`, `claude-sonnet-4-6`, `claude-haiku-4-5`.
 
-Проверь список моделей:
+Сквозной тест — реальный запрос через прокси к DeepSeek (VPN не нужен):
+
 ```powershell
-curl http://127.0.0.1:4000/v1/models
+curl.exe -s -X POST http://127.0.0.1:4000/v1/messages `
+  -H "content-type: application/json" -H "x-api-key: test" -H "anthropic-version: 2023-06-01" `
+  -d '{\"model\":\"deepseek-flash\",\"max_tokens\":8,\"messages\":[{\"role\":\"user\",\"content\":\"ping\"}]}'
 ```
 
-Должны быть: `deepseek-v4-pro`, `deepseek-flash`, `claude-sonnet-4-6`, `claude-haiku-4-5`.
+Ожидается JSON с `"role":"assistant"`. Ошибка `400 Invalid model name` — см. диагностику.
 
----
+Погаси прокси, если поднимал вручную (в штатной работе это делает `cc-proxy`):
 
-## Шаг 9 — Автозагрузка (опционально)
-
-При работе через `cc-proxy` автозагрузка не нужна: прокси поднимается по требованию и гасится при выходе. Автозагрузка полезна только если хочется держать прокси постоянно запущенным.
-
-Создай ярлык на `start-proxy.cmd` и помести в:
-```
-C:\Users\YOUR_USERNAME\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\
-```
-
-Или через PowerShell:
 ```powershell
-$startup = "$home\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
+Get-NetTCPConnection -LocalPort 4000 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+```
+
+Финальная проверка лончеров:
+
+```powershell
+cc-ds        # баннер Claude Code, модель deepseek-flash[1m] — работает без прокси
+cc-proxy     # поднимает прокси, проверяет DIAL/VPN, гасит прокси при выходе
+```
+
+## Шаг 8. Обвязка Claude Code (опционально)
+
+Если у пользователя есть репозиторий с конфигурацией `~/.claude` (CLAUDE.md, агенты,
+политики, хуки, скиллы) — разверни его по его собственному `AGENT-INSTALL.md`
+из того репозитория.
+
+## Автозагрузка
+
+По умолчанию **не нужна**: `cc-proxy` поднимает прокси на время сессии и гасит его
+при выходе последней параллельной сессии (счётчик в `cc-proxy.lock`).
+
+Держать прокси постоянно (например, для сторонних клиентов) — тогда ярлык:
+
+```powershell
+$startup = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"
 $shell = New-Object -ComObject WScript.Shell
-$shortcut = $shell.CreateShortcut("$startup\litellm-proxy.lnk")
-$shortcut.TargetPath = "$proxyDir\start-proxy.cmd"
-$shortcut.WorkingDirectory = $proxyDir
-$shortcut.Save()
+$lnk = $shell.CreateShortcut("$startup\litellm-proxy.lnk")
+$lnk.TargetPath = "$env:USERPROFILE\cc-llm-setup\start-proxy.cmd"
+$lnk.WorkingDirectory = "$env:USERPROFILE\cc-llm-setup"
+$lnk.Save()
 ```
 
----
+Отключить автозагрузку — удалить ярлык (или переименовать в `.lnk.bak`).
 
-## Шаг 10 — Проверь работу Claude Code
+## Диагностика
 
-```powershell
-claude --version
-claude -p "ответь одним словом: работает?"
-```
+| Симптом | Причина | Решение |
+|---|---|---|
+| `400 Invalid model name ...` | имя модели в `.env` не совпадает с `config-azure.yaml`; чаще всего лишний суффикс `[1m]` | убери `[1m]` из `.env`; `[1m]` допустим только в `cc-ds` |
+| `Application startup failed` + `UnicodeEncodeError` в консоли | не задан `PYTHONIOENCODING=utf-8` | добавь в `start-proxy.cmd` (он уже есть в шаблоне) |
+| `/health` зависает | `/health` пингует все модели, включая недоступный DIAL | используй `/health/liveliness` |
+| `[cc-proxy] ERROR: start-proxy.cmd not found` | `start-proxy.cmd` не рядом с лончером и не в `%USERPROFILE%\cc-llm-setup` | положи скрипт в папку проекта или клонируй туда |
+| WARNING про DIAL, sonnet/haiku не отвечают | нет VPN или истёк DIAL token | включи VPN; проверь `curl.exe -s -o NUL -w "%{http_code}" -m 5 https://ai-proxy.lab.epam.com` → `401` = ок, `000` = нет сети/VPN |
+| Прокси остался висеть после закрытия окна | жёсткое завершение сессии не уменьшило счётчик | `cc-proxy.lock` в папке проекта удалить; при следующем старте счётчик сбросится |
+| DeepSeek отвечает ошибкой | ключ/баланс | platform.deepseek.com → API Keys / Usage |
+| Прокси отвечает `429 Too Many Requests` | лимит DeepSeek | подожди или переключись на `cc-ds` |
 
-Запусти интерактивно `cc-proxy` (прокси + обе модели) или `cc-ds` (прямой DeepSeek): должен появиться баннер Claude Code. Если ответ получен — установка завершена.
+## Чего делать нельзя
 
----
+- Коммитить `config-azure.yaml`, `start-proxy.cmd`, `.env` — там живые ключи.
+  Все три перечислены в `.gitignore`; проверяй `git status` перед коммитом.
+- Печатать в чат содержимое `config-azure.yaml` и `.env`, даже частично.
+- Менять порт `4000` в одном файле из двух: `start-proxy.cmd` и проверки в `cc-proxy.cmd`
+  должны оставаться согласованными.
+- Указывать `--host 0.0.0.0`: прокси должен слушать только `127.0.0.1`.
 
-## Диагностика проблем
-
-### Прокси не запускается
-- Проверь, что `venv\Scripts\litellm.exe` существует
-- Запусти вручную с выводом: `.\venv\Scripts\litellm.exe --config config-azure.yaml --port 4000`
-- Смотри ошибки в консоли
-
-### Claude Code не видит прокси
-- Проверь `~\.env`: `ANTHROPIC_BASE_URL=http://127.0.0.1:4000`
-- Перезапусти терминал после изменения `.env`
-- Проверь `curl http://127.0.0.1:4000/health/liveliness` — должен быть ответ `I'm alive!`
-
-### Ошибки кодировки при запуске прокси
-- В `start-proxy.cmd` должно быть: `set "PYTHONIOENCODING=utf-8"`
-
-### DeepSeek не отвечает
-- Проверь ключ на platform.deepseek.com → API Keys
-- Проверь баланс аккаунта
-
-### DIAL не отвечает
-- DIAL token имеет срок жизни — получи новый у администратора EPAM
-- Проверь VPN-подключение к корпоративной сети: без VPN имя резолвится в публичный IP, где сервис не отвечает. Быстрая проверка: `curl -s -m 5 -o /dev/null -w "%{http_code}" https://ai-proxy.lab.epam.com` — `401` = всё ок, `000` = включить VPN
-- `cc-proxy` сам печатает WARNING о недоступном DIAL перед запуском Claude Code
-
----
-
-## Итоговая схема работы
+## Схема
 
 ```
-Claude Code / другой AI-агент
-        │
-        │ Anthropic Messages API
-        ▼
-LiteLLM прокси (127.0.0.1:4000)
-        │
-        ├─── deepseek-v4-pro / deepseek-flash
-        │         └── api.deepseek.com/anthropic
-        │
-        └─── claude-sonnet-4-6 / claude-haiku-4-5
-                  └── ai-proxy.lab.epam.com (EPAM DIAL)
-```
+Claude Code (cc-ds) ────────────────► api.deepseek.com/anthropic
+Claude Code (cc-proxy) ──► LiteLLM 127.0.0.1:4000 ──┬──► api.deepseek.com/anthropic
+                                                     └──► ai-proxy.lab.epam.com (EPAM DIAL, VPN)
 
-### Переключение модели в Claude Code
-```
-/model deepseek-flash       ← по умолчанию, повседневная работа
-/model deepseek-v4-pro      ← самые сложные задачи, архитектура, алгоритмика
-/model claude-sonnet-4-6    ← консультации (только при VPN)
+Переключение модели в Claude Code:
+  /model deepseek-flash      ← по умолчанию (V4.1 Flash, повседневная работа)
+  /model deepseek-v4-pro     ← архитектура, алгоритмика, глубокий ревью
+  /model claude-sonnet-4-6   ← корпоративный Claude (только при VPN)
 ```

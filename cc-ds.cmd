@@ -1,5 +1,6 @@
 @echo off
-REM cc-ds: Claude Code via DeepSeek API directly (no proxy, model deepseek-v4-pro[1m])
+REM cc-ds: Claude Code via DeepSeek API directly (no proxy).
+REM Default model: deepseek-flash[1m]; opus slot: deepseek-v4-pro[1m].
 REM Loads vars from %USERPROFILE%\.env, then overrides endpoint/model to direct DeepSeek.
 title CC / DeepSeek direct
 setlocal EnableExtensions
@@ -23,12 +24,14 @@ for /f "usebackq tokens=1* delims==" %%A in (`findstr /b /c:"$env:" "%ENVF%"`) d
   if "%%A"=="$env:ENABLE_TOOL_SEARCH" set "ENABLE_TOOL_SEARCH=%%~B"
 )
 
-REM Direct DeepSeek overrides
+REM Direct DeepSeek overrides (the [1m] suffix selects the 1M-token context variant).
+REM The DeepSeek key comes from the .env lines loaded above; the endpoint is replaced
+REM with the direct Anthropic-compatible DeepSeek API - no LiteLLM proxy involved.
 set "ANTHROPIC_BASE_URL=https://api.deepseek.com/anthropic"
-set "ANTHROPIC_MODEL=deepseek-flash"
+set "ANTHROPIC_MODEL=deepseek-flash[1m]"
 set "ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro[1m]"
-set "ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-flash"
+set "ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-flash[1m]"
 
-echo [cc-ds] Claude Code -- DeepSeek API direct ^(default: deepseek-flash, opus: deepseek-v4-pro[1m]^)
+echo [cc-ds] Claude Code -- DeepSeek API direct ^(default: deepseek-flash[1m], opus: deepseek-v4-pro[1m]^)
 claude --allow-dangerously-skip-permissions --dangerously-skip-permissions %*
 exit /b %errorlevel%
