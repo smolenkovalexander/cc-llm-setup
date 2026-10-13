@@ -1,1 +1,5 @@
-litellm>=1.99.0
+# Pinned on purpose: 1.99.0 is the version verified on the source machine.
+# Newer LiteLLM releases refuse to start without authentication settings in the
+# config (a master_key or an explicit weak-key opt-in) - see the compatibility
+# note at the end of config-azure.yaml.example before upgrading.
+litellm==1.99.0
